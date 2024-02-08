@@ -1,5 +1,6 @@
 
 import socketio
+from socketio.exceptions import ConnectionRefusedError
 from aiohttp import web
 from aiohttp.abc import Request
 from aiohttp.web_response import Response
@@ -19,6 +20,7 @@ app = web.Application(logger=getLogger('iohttp'))
 sio = socketio.AsyncServer(
     async_mode='aiohttp',
     cors_allowed_origins='*',
+    namespaces=['/', '/admin'],
     engineio_logger=getLogger('socketio')
 )
 sio.attach(app) #, socketio_path='/backend/socket.io')
@@ -29,18 +31,30 @@ async def on_prepare(request, response):
     response.headers['Access-Control-Allow-Origin'] = '*'
 
 
-@sio.on('*')
-async def any_event(event, sid, data):
-    logger.info('topic %s %s: %s', event, sid, data)
+@sio.on('connect', namespace='/user')
+async def admin_connect(sid, environ, auth):
+    if auth['username'] != 'admin':
+        raise ConnectionRefusedError('authentication failed')
+    async with sio.session(sid, namespace='/user') as session:
+        session['username'] = auth['username']
+
+@sio.on('reset', namespace='/user')
+async def reset(sid, data):
+    logger.error(data)
+    async with sio.session(sid, '/user') as session:
+        logger.info('%s: %s', session['username'], data)
+    await sio.emit(
+        'counter',
+        [{'op': 'add', 'path': '/user', 'value': {'id': 1, 'name': 'XXX'}}]
+    )
+
+@sio.on('topic', namespace='/')
+async def topic(sid, data):
+    logger.info('topic %s: %s', sid, data)
     await sio.emit(
         'counter',
         [{'op': 'add', 'path': '/foo', 'value': {'id': 1, 'name': 'XXX'}}]
     )
-
-# @routes.get(r'/ws/')
-# async def init_socket(request: Request) -> Response:
-#     print('*'*80)
-#     return await app['msocket'].websocket_handler(request)
 
 
 

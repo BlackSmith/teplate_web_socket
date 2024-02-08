@@ -1,16 +1,10 @@
 import {Manager} from "socket.io-client";
 
-const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
 
 class WebSocketService {
-  pingTimeout = null;
-  client = null;
+  client = null;    //  anonymous user
+  user = null;      //  logged user
   manager = null;
-  engine = null;
-
-  constructor() {
-    this.connect()
-  }
 
   install(Vue) {
     const version = Number(Vue.version.split('.')[0])
@@ -22,26 +16,25 @@ class WebSocketService {
     console.info('WebSocketService plugin is enabled');
   }
 
+  constructor() {
+    this.manager = new Manager();
+    this.connect();
+  }
+
   connect() {
     if (this.client && typeof this.client === 'object') {
       return
     }
-    this.manager = new Manager();
     this.client = this.manager.socket('/');
-
-    this.engine
 
     this.client.on('connect', () => {
       console.info('Socket connected: '+ this.client.connected);
-      this.engine = this.client.io.engine;
-
-      this.engine.once("upgrade", () => {
-        console.log("Socket upgrade: ", this.engine.transport.name);
+      this.client.io.engine.once("upgrade", () => {
+        console.log("Socket upgrade to ", this.client.io.engine.transport.name);
       });
     });
 
     this.client.on('disconnect', (reason) => {
-      // clearTimeout(this.pingTimeout);
       console.info('Socket disconnected: ' + reason);
     });
 
@@ -51,12 +44,39 @@ class WebSocketService {
         this.client.connect();
       }, 1000);
     });
+  }
 
-    this.client.on("topic2", (data) => {
-      console.info(data);
+  userLogin(username, password) {
+    if (this.user && typeof this.user === 'object') {
+      return
+    }
+    this.user = this.manager.socket('/user', {
+      withCredentials: true
+    })
+    this.user.auth = { username: username, password: password }
+
+    this.user.on('connect', () => {
+      console.info('Private socket connected: ' + this.user.connected);
+      this.user.io.engine.once("upgrade", () => {
+        console.log("Private socket upgrade to ", this.user.io.engine.transport.name);
+      });
+    });
+
+    this.user.on('disconnect', (reason) => {
+      console.info('Private socket disconnected: ' + reason);
+      this.user = null;
+    });
+
+    this.user.on("connect_error", (reason) => {
+      console.info('Private socket admin connect error. ' + reason );
+      this.user = null;
     });
   }
-}
 
+  isUserLogged() {
+    return this.user != null && this.user.connected;
+  }
+
+}
 
 export const socket = new WebSocketService()

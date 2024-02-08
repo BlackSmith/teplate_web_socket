@@ -8,7 +8,6 @@ export const useCounterStore = defineStore('counter', () => {
   const doubleCount = computed(() => count.value * 2)
   socket.client.on('counter', (data) => {
     console.log(data)
-    // console.warn(jsonpatch.apply(count.value, data))
     count.value = jsonpatch.apply(count.value, data);
   })
   function increment() {

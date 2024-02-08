@@ -21,6 +21,11 @@ export default {
     ws_emit(msg) {
       console.info('emit: '+msg)
       this.$socket.client.emit("topic", msg);
+    },
+    admin_emit(msg) {
+      console.info('admin emit: ' + msg)
+      this.$socket.userLogin('admin', 'passwd')
+      this.$socket.user.emit("reset", msg);
     }
   }
 
@@ -31,6 +36,7 @@ export default {
 <template>
   <input type="text" ref="msg">
   <button @click="ws_emit($refs.msg.value)">X</button>
+  <button @click="admin_emit($refs.msg.value)">A</button>
   <h3>{{counter.count}}</h3>
   <RouterView />
 </template>
