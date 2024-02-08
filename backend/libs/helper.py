@@ -1,3 +1,6 @@
+import yaml
+
+
 def get_yaml(filename):
     with open(filename, 'r+') as fd:
         return yaml.safe_load(fd)

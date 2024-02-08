@@ -22,8 +22,8 @@ services:
       - ./frontend:/app
     labels:
       - "traefik.enable=true"
+      - "traefik.port=5173"
       - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
-      - "traefik.http.services.frontend.loadbalancer.server.port=5173"
     expose:
       - 5173
     #    ports:
@@ -39,12 +39,12 @@ services:
       - ./static:/app/static
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=PathPrefix(`/backend`)"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "traefik.port=8000"
+      - "traefik.http.routers.backend.rule=PathPrefix(`/backend`) || PathPrefix(`/socket`)"
     expose:
       - 8000
 #    ports:
-#      - 8000:8000
+#      - 8090:8000
     command: sh -c 'pip install --upgrade pip && pip install -r requirements.txt && pip install -r requirements_dev.txt && adev runserver -s /app/static --host 0.0.0.0'
     restart: always
 
