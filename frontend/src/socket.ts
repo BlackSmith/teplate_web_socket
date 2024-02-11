@@ -2,8 +2,8 @@ import {Manager} from "socket.io-client";
 
 
 class WebSocketService {
-  client = null;    //  anonymous user
-  user = null;      //  logged user
+  client = null;       //  socket for anonymous user
+  pclient = null;      //  socket for logged user
   manager = null;
 
   install(Vue) {
@@ -17,7 +17,10 @@ class WebSocketService {
   }
 
   constructor() {
-    this.manager = new Manager();
+    this.manager = new Manager(null, {
+      transports: ["websocket", "webtransport"],
+      autoConnect: false,
+    });
     this.connect();
   }
 
@@ -28,53 +31,63 @@ class WebSocketService {
     this.client = this.manager.socket('/');
 
     this.client.on('connect', () => {
-      console.info('Socket connected: '+ this.client.connected);
+      console.info('Public socket connected: '+ this.client.connected);
       this.client.io.engine.once("upgrade", () => {
-        console.log("Socket upgrade to ", this.client.io.engine.transport.name);
+        console.log(
+            "Public socket upgrade to " + this.client.io.engine.transport.name
+        );
       });
     });
 
     this.client.on('disconnect', (reason) => {
-      console.info('Socket disconnected: ' + reason);
+      console.info('Public socket disconnected: ' + reason);
+      if (reason === "io server disconnect") {
+        // the disconnection was initiated by the server,
+        // need to reconnect manually
+        this.client.connect();
+      }
     });
 
     this.client.on("connect_error", () => {
-      console.info('Socket connect error.');
+      console.info('Public socket connect error.');
       setTimeout(() => {
         this.client.connect();
       }, 1000);
     });
-  }
+    this.client.connect()
 
-  userLogin(username, password) {
-    if (this.user && typeof this.user === 'object') {
+    // Private socket
+    if (this.pclient && typeof this.pclient === 'object') {
       return
     }
-    this.user = this.manager.socket('/user', {
-      withCredentials: true
+    this.pclient = this.manager.socket('/private', {
+      withCredentials: true,
+      multiplex: false
     })
-    this.user.auth = { username: username, password: password }
 
-    this.user.on('connect', () => {
-      console.info('Private socket connected: ' + this.user.connected);
-      this.user.io.engine.once("upgrade", () => {
-        console.log("Private socket upgrade to ", this.user.io.engine.transport.name);
+    this.pclient.on('connect', () => {
+      console.info('Private socket connected: ' + this.pclient.connected);
+      this.pclient.io.engine.once("upgrade", () => {
+        console.log("Private socket upgrade to ", this.pclient.io.engine.transport.name);
       });
     });
 
-    this.user.on('disconnect', (reason) => {
+    this.pclient.on('disconnect', (reason) => {
       console.info('Private socket disconnected: ' + reason);
-      this.user = null;
     });
 
-    this.user.on("connect_error", (reason) => {
-      console.info('Private socket admin connect error. ' + reason );
-      this.user = null;
+    this.pclient.on("connect_error", (reason) => {
+      console.info('Private socket admin connect error. ' + reason);
     });
   }
 
-  isUserLogged() {
-    return this.user != null && this.user.connected;
+  userLogin(username, password) {
+    this.pclient.auth = { username: username, password: password }
+    this.pclient.connect()
+  }
+
+  ispclientLogged() {
+    return this.pclient.connected;
   }
 
 }

@@ -33,3 +33,5 @@ profiles:
         level: INFO
       aiohttp.access:
         level: WARNING
+      socketio:
+        level: WARNING

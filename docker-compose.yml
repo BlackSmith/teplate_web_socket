@@ -34,6 +34,8 @@ services:
   backend:
     image: python:3.11-slim
     working_dir: /app
+    env_file:
+      - .envs
     volumes:
       - ./backend:/app
       - ./static:/app/static

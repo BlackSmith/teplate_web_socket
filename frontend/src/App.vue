@@ -1,10 +1,10 @@
 <script lang="ts">
-import {useCounterStore} from '@/stores/counter'
+import {useFilesStore} from '@/stores/files'
 
 export default {
   setup() {
-    let counter = useCounterStore();
-    return {counter}
+    let files = useFilesStore();
+    return {files}
   },
   data() {
     return {
@@ -20,12 +20,18 @@ export default {
   methods: {
     ws_emit(msg) {
       console.info('emit: '+msg)
+      // Sent to public entrypoint
       this.$socket.client.emit("topic", msg);
     },
-    admin_emit(msg) {
-      console.info('admin emit: ' + msg)
+    admin_login() {
+      // Login user
       this.$socket.userLogin('admin', 'passwd')
-      this.$socket.user.emit("reset", msg);
+    },
+    admin_emit(msg)
+      {
+      console.info('admin emit: ' + msg)
+      // Send to message to private entrypoint
+      this.$socket.pclient.emit("private_topic", msg);
     }
   }
 
@@ -35,10 +41,11 @@ export default {
 
 <template>
   <input type="text" ref="msg">
-  <button @click="ws_emit($refs.msg.value)">X</button>
-  <button @click="admin_emit($refs.msg.value)">A</button>
-  <h3>{{counter.count}}</h3>
-  <RouterView />
+  <button @click="ws_emit($refs.msg.value)">public</button>
+  <button @click="admin_login()">login</button>
+  <button @click="admin_emit($refs.msg.value)">private</button>
+  <h3>{{files.files}}</h3>
+
 </template>
 
 <style scoped>
